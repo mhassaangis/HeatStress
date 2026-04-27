@@ -1,0 +1,54 @@
+var image = ee.ImageCollection("ECMWF/ERA5_LAND/DAILY_AGGR");
+var image1 = image.filter(ee.Filter.date('2024-11-12', '2024-11-13'));
+var T = image1.select('temperature_2m');
+var T1 = T.filterBounds(AOI);
+var T2 = T1.mean();
+var T3 = T2.subtract(273.1519);
+var T4 = T3.clip(AOI);
+Map.addLayer(T4, {min: 0, max: 50,  palette: ['Green', 'yellow', 'orange', 'red']}, 'T');
+
+var TD = image1.select('dewpoint_temperature_2m');
+var TD1 = TD.filterBounds(AOI);
+var TD2 = TD1.mean();
+var TD3 = TD2.subtract(273.1519);
+var TD4 = TD3.clip(AOI);
+Map.centerObject(AOI, 3);
+Map.addLayer(TD4, {min: 0, max: 20,  palette: ['Green', 'yellow', 'orange', 'red']}, 'TD');
+
+// Calculate saturation vapor pressure for temperature (T) and dew point temperature (Td)
+var saturationVaporPressureT = T3.multiply(17.67)
+  .divide(T3.add(243.5))
+  .exp()
+  .multiply(6.112);
+
+var saturationVaporPressureTd = TD3.multiply(17.67)
+  .divide(TD3.add(243.5))
+  .exp()
+  .multiply(6.112);
+
+// Calculate Relative Humidity (RH)
+var RH = saturationVaporPressureTd.divide(saturationVaporPressureT)
+  .multiply(100);
+
+var RH1 = RH.clip(AOI);
+
+Map.addLayer(RH1, {min: 0, max: 100,  palette: ['red', 'Blue']}, 'RH');
+
+
+// Exporting data
+Export.image.toDrive({
+  image: T4,
+  description: 'Temp_12_11_2024',
+  scale: 500,
+  region: AOI,
+  fileFormat: 'GeoTIFF'
+});
+
+// Exporting data
+Export.image.toDrive({
+  image: RH1,
+  description: 'RH_12_11_2024',
+  scale: 500,
+  region: AOI,
+  fileFormat: 'GeoTIFF'
+});
